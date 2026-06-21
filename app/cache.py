@@ -99,6 +99,9 @@ def get_cache() -> Optional[CacheBackend]:
         return None
     
     if settings.cache_type == "redis":
+        if not settings.redis_url:
+            logger.warning("Redis URL not configured, falling back to memory cache")
+            return MemoryCache()
         try:
             return RedisCache()
         except Exception as e:
