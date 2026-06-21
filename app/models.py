@@ -49,6 +49,11 @@ class HealthResponse(BaseModel):
     rate_limit_enabled: bool
 
 
+class DownloadResponse(BaseModel):
+    success: bool
+    download: Optional[dict]
+
+
 class ErrorResponse(BaseModel):
     success: bool = False
     error: str

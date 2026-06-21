@@ -263,6 +263,49 @@ class YtDlpService:
         except Exception as e:
             logger.error(f"Error getting related videos: {e}")
             raise
+    
+    async def get_download_info(self, video_id: str, format: str = None) -> Optional[Dict[str, Any]]:
+        """Get download information for a video."""
+        try:
+            opts = self._get_ydl_opts(format=format)
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                if not info:
+                    return None
+                
+                # Get all available formats
+                formats = []
+                for fmt in info.get('formats', []):
+                    if fmt.get('ext'):
+                        formats.append({
+                            'format_id': fmt.get('format_id'),
+                            'ext': fmt.get('ext'),
+                            'format': fmt.get('format'),
+                            'filesize': fmt.get('filesize'),
+                            'url': fmt.get('url'),
+                            'vcodec': fmt.get('vcodec'),
+                            'acodec': fmt.get('acodec'),
+                            'abr': fmt.get('abr'),
+                            'vbr': fmt.get('vbr'),
+                        })
+                
+                return {
+                    'id': info.get('id'),
+                    'title': info.get('title'),
+                    'duration': info.get('duration'),
+                    'thumbnail': info.get('thumbnail'),
+                    'webpage_url': info.get('webpage_url'),
+                    'formats': formats,
+                    'best_audio_url': info.get('url') if info.get('vcodec') == 'none' else None,
+                    'best_video_url': info.get('url') if info.get('acodec') == 'none' else None,
+                }
+        
+        except Exception as e:
+            logger.error(f"Error getting download info: {e}")
+            raise
 
 
 ytdlp_service = YtDlpService()

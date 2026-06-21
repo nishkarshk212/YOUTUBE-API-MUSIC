@@ -22,6 +22,7 @@ from app.models import (
     RelatedVideosResponse,
     LyricsResponse,
     HealthResponse,
+    DownloadResponse,
     ErrorResponse
 )
 
@@ -434,6 +435,59 @@ async def search_lyrics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to search lyrics: {str(e)}"
+        )
+
+
+@app.get("/download", response_model=DownloadResponse, tags=["YouTube"])
+@limiter.limit("30/minute") if limiter else lambda f: f
+async def get_download_info(
+    request: Request,
+    id: str = Query(..., description="YouTube video ID"),
+    format: str = Query(None, description="Custom format string (optional)"),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Get download information for a video.
+    
+    Returns all available formats and direct download URLs for the video.
+    Useful for Telegram bots that need to download videos/audio.
+    """
+    cache_key = f"download:{id}:{format or 'default'}"
+    
+    # Check cache
+    if cache:
+        cached = await cache.get(cache_key)
+        if cached:
+            logger.info(f"Cache hit for download: {id}")
+            return DownloadResponse(**cached)
+    
+    try:
+        download = await ytdlp_service.get_download_info(id, format)
+        
+        if not download:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Download information not found"
+            )
+        
+        response = DownloadResponse(
+            success=True,
+            download=download
+        )
+        
+        # Cache result with shorter TTL
+        if cache:
+            await cache.set(cache_key, response.dict(), 1800)  # 30 minutes
+        
+        return response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Download info error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get download info: {str(e)}"
         )
 
 
