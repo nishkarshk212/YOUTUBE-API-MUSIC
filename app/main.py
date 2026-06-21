@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Query, status
+from fastapi import FastAPI, HTTPException, Depends, Query, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -83,6 +83,7 @@ async def health_check():
 @app.get("/search", response_model=VideoSearchResponse, tags=["YouTube"])
 @limiter.limit("60/minute") if limiter else lambda f: f
 async def search_videos(
+    request: Request,
     q: str = Query(..., description="Search query for videos"),
     max_results: int = Query(10, ge=1, le=50, description="Maximum number of results"),
     api_key: str = Depends(verify_api_key)
@@ -128,6 +129,7 @@ async def search_videos(
 @app.get("/video", response_model=VideoInfoResponse, tags=["YouTube"])
 @limiter.limit("60/minute") if limiter else lambda f: f
 async def get_video_info(
+    request: Request,
     id: str = Query(..., description="YouTube video ID"),
     api_key: str = Depends(verify_api_key)
 ):
@@ -179,6 +181,7 @@ async def get_video_info(
 @app.get("/audio", response_model=AudioStreamResponse, tags=["YouTube"])
 @limiter.limit("60/minute") if limiter else lambda f: f
 async def get_audio_stream(
+    request: Request,
     id: str = Query(..., description="YouTube video ID"),
     api_key: str = Depends(verify_api_key)
 ):
@@ -229,6 +232,7 @@ async def get_audio_stream(
 @app.get("/stream", response_model=StreamResponse, tags=["YouTube"])
 @limiter.limit("60/minute") if limiter else lambda f: f
 async def get_stream_url(
+    request: Request,
     id: str = Query(..., description="YouTube video ID"),
     format: str = Query(None, description="Custom format string (optional)"),
     api_key: str = Depends(verify_api_key)
@@ -281,6 +285,7 @@ async def get_stream_url(
 @app.get("/playlist", response_model=PlaylistResponse, tags=["YouTube"])
 @limiter.limit("30/minute") if limiter else lambda f: f
 async def get_playlist(
+    request: Request,
     id: str = Query(..., description="YouTube playlist ID"),
     api_key: str = Depends(verify_api_key)
 ):
@@ -331,6 +336,7 @@ async def get_playlist(
 @app.get("/related", response_model=RelatedVideosResponse, tags=["YouTube"])
 @limiter.limit("60/minute") if limiter else lambda f: f
 async def get_related_videos(
+    request: Request,
     id: str = Query(..., description="YouTube video ID"),
     api_key: str = Depends(verify_api_key)
 ):
@@ -374,6 +380,7 @@ async def get_related_videos(
 @app.get("/lyrics", response_model=LyricsResponse, tags=["YouTube"])
 @limiter.limit("30/minute") if limiter else lambda f: f
 async def search_lyrics(
+    request: Request,
     q: str = Query(..., description="Song name or artist + song name"),
     api_key: str = Depends(verify_api_key)
 ):
