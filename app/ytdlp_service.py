@@ -38,6 +38,13 @@ class YtDlpService:
             'nocheckcertificate': True,
             'geo_bypass': settings.region_fallback,
             'geo_bypass_country': None,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': 'android',
+                }
+            },
+            'cookiefile': None,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         }
         return opts
     
@@ -212,12 +219,21 @@ class YtDlpService:
                     return None
                 
                 tracks = []
-                for entry in info.get('entries', []):
+                entries = info.get('entries', [])
+                if not entries:
+                    # Try with extract_flat=True if no entries returned
+                    opts_flat = self._get_ydl_opts(extract_flat=True)
+                    with yt_dlp.YoutubeDL(opts_flat) as ydl_flat:
+                        info_flat = ydl_flat.extract_info(url, download=False)
+                        if info_flat:
+                            entries = info_flat.get('entries', [])
+                
+                for entry in entries:
                     if entry:
                         tracks.append({
                             'id': entry.get('id'),
                             'title': entry.get('title'),
-                            'url': entry.get('url'),
+                            'url': entry.get('url') or f"https://www.youtube.com/watch?v={entry.get('id')}",
                             'duration': entry.get('duration'),
                             'thumbnail': entry.get('thumbnail'),
                         })
@@ -247,12 +263,24 @@ class YtDlpService:
                     return []
                 
                 related = []
-                for entry in info.get('related_videos', [])[:settings.max_results]:
+                related_videos = info.get('related_videos', [])
+                
+                # If no related videos, try to get them from automatic captions or search
+                if not related_videos:
+                    # Fallback: search for similar videos based on title
+                    title = info.get('title', '')
+                    if title:
+                        search_results = await self.search_videos(title, max_results=5)
+                        # Filter out the original video
+                        related = [v for v in search_results if v.get('id') != video_id]
+                        return related[:settings.max_results]
+                
+                for entry in related_videos[:settings.max_results]:
                     if entry:
                         related.append({
                             'id': entry.get('id'),
                             'title': entry.get('title'),
-                            'url': entry.get('url'),
+                            'url': entry.get('url') or f"https://www.youtube.com/watch?v={entry.get('id')}",
                             'duration': entry.get('duration'),
                             'thumbnail': entry.get('thumbnail'),
                             'uploader': entry.get('uploader'),
