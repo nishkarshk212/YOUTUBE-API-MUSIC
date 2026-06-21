@@ -87,14 +87,14 @@ async def search_videos(
     request: Request,
     q: str = Query(..., description="Search query for videos"),
     max_results: int = Query(10, ge=1, le=50, description="Maximum number of results"),
-    platform: str = Query("youtube", description="Platform to search on (youtube, youtube_music, soundcloud)"),
+    platform: str = Query("youtube", description="Platform to search on (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
     """
     Search for videos on supported platforms.
     
     Returns a list of videos matching the search query, optimized for Telegram music bots.
-    Supports: youtube, youtube_music, soundcloud
+    Supports: youtube, soundcloud
     """
     cache_key = f"search:{q}:{max_results}:{platform}"
     
@@ -134,7 +134,7 @@ async def search_videos(
 async def get_video_info(
     request: Request,
     id: str = Query(..., description="Video ID or URL"),
-    platform: str = Query("youtube", description="Platform (youtube, soundcloud, vimeo, dailymotion)"),
+    platform: str = Query("youtube", description="Platform (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -142,7 +142,7 @@ async def get_video_info(
     
     Returns comprehensive video metadata including title, duration, views, uploader, etc.
     Supports age-restricted videos and live streams.
-    Supports: youtube, soundcloud, vimeo, dailymotion
+    Supports: youtube, soundcloud
     """
     cache_key = f"video:{id}:{platform}"
     
@@ -188,14 +188,14 @@ async def get_video_info(
 async def get_audio_stream(
     request: Request,
     id: str = Query(..., description="Video ID or URL"),
-    platform: str = Query("youtube", description="Platform (youtube, soundcloud, vimeo, dailymotion)"),
+    platform: str = Query("youtube", description="Platform (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
     """
     Get direct audio stream URL for a video.
     
     Returns the best available audio stream with metadata for Telegram music bots.
-    Supports: youtube, soundcloud, vimeo, dailymotion
+    Supports: youtube, soundcloud
     """
     cache_key = f"audio:{id}:{platform}"
     
@@ -242,7 +242,7 @@ async def get_stream_url(
     request: Request,
     id: str = Query(..., description="Video ID or URL"),
     format: str = Query(None, description="Custom format string (optional)"),
-    platform: str = Query("youtube", description="Platform (youtube, soundcloud, vimeo, dailymotion)"),
+    platform: str = Query("youtube", description="Platform (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -250,7 +250,7 @@ async def get_stream_url(
     
     Returns a direct playable URL for the video, optimized for Telegram music bots.
     Supports custom format selection.
-    Supports: youtube, soundcloud, vimeo, dailymotion
+    Supports: youtube, soundcloud
     """
     cache_key = f"stream:{id}:{format or 'default'}:{platform}"
     
@@ -288,57 +288,6 @@ async def get_stream_url(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get stream URL: {str(e)}"
-        )
-
-
-@app.get("/playlist", response_model=PlaylistResponse, tags=["YouTube"])
-@limiter.limit("30/minute") if limiter else lambda f: f
-async def get_playlist(
-    request: Request,
-    id: str = Query(..., description="YouTube playlist ID"),
-    api_key: str = Depends(verify_api_key)
-):
-    """
-    Get playlist information and all tracks.
-    
-    Returns playlist metadata and a list of all videos in the playlist.
-    """
-    cache_key = f"playlist:{id}"
-    
-    # Check cache
-    if cache:
-        cached = await cache.get(cache_key)
-        if cached:
-            logger.info(f"Cache hit for playlist: {id}")
-            return PlaylistResponse(**cached)
-    
-    try:
-        playlist = await ytdlp_service.get_playlist_info(id)
-        
-        if not playlist:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Playlist not found"
-            )
-        
-        response = PlaylistResponse(
-            success=True,
-            playlist=playlist
-        )
-        
-        # Cache result
-        if cache:
-            await cache.set(cache_key, response.dict(), settings.cache_ttl_seconds)
-        
-        return response
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Playlist error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get playlist: {str(e)}"
         )
 
 
@@ -452,7 +401,7 @@ async def get_download_info(
     request: Request,
     id: str = Query(..., description="Video ID or URL"),
     format: str = Query(None, description="Custom format string (optional)"),
-    platform: str = Query("youtube", description="Platform (youtube, soundcloud, vimeo, dailymotion)"),
+    platform: str = Query("youtube", description="Platform (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -460,7 +409,7 @@ async def get_download_info(
     
     Returns all available formats and direct download URLs for the video.
     Useful for Telegram bots that need to download videos/audio.
-    Supports: youtube, soundcloud, vimeo, dailymotion
+    Supports: youtube, soundcloud
     """
     cache_key = f"download:{id}:{format or 'default'}:{platform}"
     

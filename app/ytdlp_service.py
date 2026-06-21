@@ -10,17 +10,10 @@ from app.logger import logger
 class YtDlpService:
     """Service for interacting with yt-dlp."""
     
-    # Supported platforms
+    # Supported platforms (only tested and working)
     PLATFORMS = {
         'youtube': 'youtube',
-        'youtube_music': 'ytsearchmusic',
         'soundcloud': 'soundcloud',
-        'spotify': 'spotify',
-        'apple_music': 'applemusic',
-        'bandcamp': 'bandcamp',
-        'vimeo': 'vimeo',
-        'dailymotion': 'dailymotion',
-        'twitch': 'twitch',
     }
     
     def __init__(self):
@@ -97,25 +90,12 @@ class YtDlpService:
         raise last_error
     
     async def search_videos(self, query: str, max_results: int = None, platform: str = 'youtube') -> List[Dict[str, Any]]:
-        """Search for videos on supported platforms with fallback."""
+        """Search for videos on supported platforms."""
         try:
             max_results = max_results or settings.max_results
             # Normalize query for better Unicode handling
             normalized_query = self._normalize_text(query)
             
-            # Try fallback search if enabled
-            if settings.enable_fallback_search:
-                fallback_sources = settings.fallback_sources.split(',')
-                for source in fallback_sources:
-                    try:
-                        results = await self._search_on_platform(normalized_query, max_results, source)
-                        if results:
-                            return results
-                    except Exception as e:
-                        logger.warning(f"Search on {source} failed: {e}")
-                        continue
-            
-            # Default to original platform
             return await self._search_on_platform(normalized_query, max_results, platform)
         
         except Exception as e:
@@ -124,19 +104,16 @@ class YtDlpService:
     
     async def _search_on_platform(self, query: str, max_results: int, platform: str) -> List[Dict[str, Any]]:
         """Search on a specific platform."""
-        platform_key = self.PLATFORMS.get(platform, 'youtube')
         opts = self._get_ydl_opts(extract_flat=True)
         opts['playlistend'] = max_results
         
         # Build search query based on platform
         if platform == 'youtube':
             search_query = f"ytsearch{max_results}:{query}"
-        elif platform == 'youtube_music':
-            search_query = f"ytsearchmusic{max_results}:{query}"
         elif platform == 'soundcloud':
             search_query = f"scsearch{max_results}:{query}"
         else:
-            # Default to YouTube for other platforms
+            # Default to YouTube
             search_query = f"ytsearch{max_results}:{query}"
         
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -172,10 +149,6 @@ class YtDlpService:
                 url = f"https://www.youtube.com/watch?v={video_id}"
             elif platform == 'soundcloud':
                 url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            elif platform == 'vimeo':
-                url = f"https://vimeo.com/{video_id}"
-            elif platform == 'dailymotion':
-                url = f"https://dailymotion.com/video/{video_id}"
             else:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
@@ -241,10 +214,6 @@ class YtDlpService:
                 url = f"https://www.youtube.com/watch?v={video_id}"
             elif platform == 'soundcloud':
                 url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            elif platform == 'vimeo':
-                url = f"https://vimeo.com/{video_id}"
-            elif platform == 'dailymotion':
-                url = f"https://dailymotion.com/video/{video_id}"
             else:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
@@ -320,10 +289,6 @@ class YtDlpService:
                 url = f"https://www.youtube.com/watch?v={video_id}"
             elif platform == 'soundcloud':
                 url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            elif platform == 'vimeo':
-                url = f"https://vimeo.com/{video_id}"
-            elif platform == 'dailymotion':
-                url = f"https://dailymotion.com/video/{video_id}"
             else:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
@@ -488,10 +453,6 @@ class YtDlpService:
                 url = f"https://www.youtube.com/watch?v={video_id}"
             elif platform == 'soundcloud':
                 url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            elif platform == 'vimeo':
-                url = f"https://vimeo.com/{video_id}"
-            elif platform == 'dailymotion':
-                url = f"https://dailymotion.com/video/{video_id}"
             else:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"

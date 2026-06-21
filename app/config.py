@@ -37,10 +37,6 @@ class Settings(BaseSettings):
     
     # Client fallback order
     client_order: str = "android,web,ios,tv"
-    
-    # Fallback search sources
-    enable_fallback_search: bool = True
-    fallback_sources: str = "youtube,youtube_music"
 
     # Logging Configuration
     log_level: str = "INFO"
