@@ -8,6 +8,19 @@ from app.logger import logger
 class YtDlpService:
     """Service for interacting with yt-dlp."""
     
+    # Supported platforms
+    PLATFORMS = {
+        'youtube': 'youtube',
+        'youtube_music': 'ytsearchmusic',
+        'soundcloud': 'soundcloud',
+        'spotify': 'spotify',
+        'apple_music': 'applemusic',
+        'bandcamp': 'bandcamp',
+        'vimeo': 'vimeo',
+        'dailymotion': 'dailymotion',
+        'twitch': 'twitch',
+    }
+    
     def __init__(self):
         self._update_lock = asyncio.Lock()
     
@@ -48,15 +61,27 @@ class YtDlpService:
         }
         return opts
     
-    async def search_videos(self, query: str, max_results: int = None) -> List[Dict[str, Any]]:
-        """Search for videos on YouTube."""
+    async def search_videos(self, query: str, max_results: int = None, platform: str = 'youtube') -> List[Dict[str, Any]]:
+        """Search for videos on supported platforms."""
         try:
             max_results = max_results or settings.max_results
+            platform_key = self.PLATFORMS.get(platform, 'youtube')
             opts = self._get_ydl_opts(extract_flat=True)
             opts['playlistend'] = max_results
             
+            # Build search query based on platform
+            if platform == 'youtube':
+                search_query = f"ytsearch{max_results}:{query}"
+            elif platform == 'youtube_music':
+                search_query = f"ytsearchmusic{max_results}:{query}"
+            elif platform == 'soundcloud':
+                search_query = f"scsearch{max_results}:{query}"
+            else:
+                # Default to YouTube for other platforms
+                search_query = f"ytsearch{max_results}:{query}"
+            
             with yt_dlp.YoutubeDL(opts) as ydl:
-                results = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
+                results = ydl.extract_info(search_query, download=False)
                 
                 if not results or 'entries' not in results:
                     return []
@@ -73,19 +98,32 @@ class YtDlpService:
                             'view_count': entry.get('view_count'),
                             'uploader': entry.get('uploader'),
                             'uploader_id': entry.get('uploader_id'),
+                            'platform': platform,
                         })
                 
                 return videos
         
         except Exception as e:
-            logger.error(f"Error searching videos: {e}")
+            logger.error(f"Error searching videos on {platform}: {e}")
             raise
     
-    async def get_video_info(self, video_id: str) -> Optional[Dict[str, Any]]:
+    async def get_video_info(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
         """Get detailed information about a video."""
         try:
             opts = self._get_ydl_opts()
-            url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            # Build URL based on platform
+            if platform == 'youtube':
+                url = f"https://www.youtube.com/watch?v={video_id}"
+            elif platform == 'soundcloud':
+                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+            elif platform == 'vimeo':
+                url = f"https://vimeo.com/{video_id}"
+            elif platform == 'dailymotion':
+                url = f"https://dailymotion.com/video/{video_id}"
+            else:
+                # Try as direct URL
+                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -109,17 +147,31 @@ class YtDlpService:
                     'age_limit': info.get('age_limit'),
                     'categories': info.get('categories', []),
                     'tags': info.get('tags', []),
+                    'platform': platform,
+                    'extractor': info.get('extractor'),
                 }
         
         except Exception as e:
             logger.error(f"Error getting video info: {e}")
             raise
     
-    async def get_audio_stream(self, video_id: str) -> Optional[Dict[str, Any]]:
+    async def get_audio_stream(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
         """Get audio stream information for a video."""
         try:
             opts = self._get_ydl_opts()
-            url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            # Build URL based on platform
+            if platform == 'youtube':
+                url = f"https://www.youtube.com/watch?v={video_id}"
+            elif platform == 'soundcloud':
+                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+            elif platform == 'vimeo':
+                url = f"https://vimeo.com/{video_id}"
+            elif platform == 'dailymotion':
+                url = f"https://dailymotion.com/video/{video_id}"
+            else:
+                # Try as direct URL
+                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -152,17 +204,30 @@ class YtDlpService:
                     'filesize': audio_format.get('filesize'),
                     'audio_bitrate': audio_format.get('abr'),
                     'duration': info.get('duration'),
+                    'platform': platform,
                 }
         
         except Exception as e:
             logger.error(f"Error getting audio stream: {e}")
             raise
     
-    async def get_stream_url(self, video_id: str, format: str = None) -> Optional[Dict[str, Any]]:
+    async def get_stream_url(self, video_id: str, format: str = None, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
         """Get playable stream URL for a video."""
         try:
             opts = self._get_ydl_opts(format=format)
-            url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            # Build URL based on platform
+            if platform == 'youtube':
+                url = f"https://www.youtube.com/watch?v={video_id}"
+            elif platform == 'soundcloud':
+                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+            elif platform == 'vimeo':
+                url = f"https://vimeo.com/{video_id}"
+            elif platform == 'dailymotion':
+                url = f"https://dailymotion.com/video/{video_id}"
+            else:
+                # Try as direct URL
+                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -200,6 +265,7 @@ class YtDlpService:
                     'format': best_format.get('format'),
                     'duration': info.get('duration'),
                     'thumbnail': info.get('thumbnail'),
+                    'platform': platform,
                 }
         
         except Exception as e:
@@ -292,11 +358,23 @@ class YtDlpService:
             logger.error(f"Error getting related videos: {e}")
             raise
     
-    async def get_download_info(self, video_id: str, format: str = None) -> Optional[Dict[str, Any]]:
+    async def get_download_info(self, video_id: str, format: str = None, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
         """Get download information for a video."""
         try:
             opts = self._get_ydl_opts(format=format)
-            url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            # Build URL based on platform
+            if platform == 'youtube':
+                url = f"https://www.youtube.com/watch?v={video_id}"
+            elif platform == 'soundcloud':
+                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+            elif platform == 'vimeo':
+                url = f"https://vimeo.com/{video_id}"
+            elif platform == 'dailymotion':
+                url = f"https://dailymotion.com/video/{video_id}"
+            else:
+                # Try as direct URL
+                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -329,6 +407,7 @@ class YtDlpService:
                     'formats': formats,
                     'best_audio_url': info.get('url') if info.get('vcodec') == 'none' else None,
                     'best_video_url': info.get('url') if info.get('acodec') == 'none' else None,
+                    'platform': platform,
                 }
         
         except Exception as e:
