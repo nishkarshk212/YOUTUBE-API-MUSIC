@@ -62,6 +62,25 @@ async def startup_event():
     logger.info("Application started successfully")
 
 
+@app.get("/", response_model=HealthResponse, tags=["Health"])
+async def root():
+    """
+    Root endpoint - shows API health status.
+    """
+    try:
+        ytdlp_version = yt_dlp.version.__version__
+    except:
+        ytdlp_version = "unknown"
+    
+    return HealthResponse(
+        status="healthy",
+        version=settings.api_version,
+        ytdlp_version=ytdlp_version,
+        cache_enabled=settings.cache_enabled,
+        rate_limit_enabled=settings.rate_limit_enabled
+    )
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     """
