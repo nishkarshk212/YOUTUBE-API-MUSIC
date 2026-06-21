@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     default_video_format: str = "bestvideo+bestaudio/best"
     max_results: int = 10
     region_fallback: bool = True
+    
+    # Enhanced extraction settings
+    use_cookies: bool = False
+    cookie_file: Optional[str] = None
+    source_address: str = "0.0.0.0"
+    enable_ipv4: bool = True
+    max_retries: int = 3
+    retry_delay: int = 1  # seconds
+    
+    # Client fallback order
+    client_order: str = "android,web,ios,tv"
+    
+    # Fallback search sources
+    enable_fallback_search: bool = True
+    fallback_sources: str = "youtube,youtube_music"
 
     # Logging Configuration
     log_level: str = "INFO"
