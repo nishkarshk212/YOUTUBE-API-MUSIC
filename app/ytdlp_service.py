@@ -530,18 +530,17 @@ class YtDlpService:
             except Exception as search_error:
                 logger.warning(f"Search fallback also failed: {str(search_error)}")
             
-            # If all clients failed, raise a descriptive error
+            # If all clients failed, return None (video unavailable)
             error_msg = str(last_error) if last_error else "Video unavailable or not found"
             if "unavailable" in error_msg.lower() or "not found" in error_msg.lower():
-                raise ValueError(f"Video {video_id} is unavailable or has been removed")
+                logger.warning(f"Video {video_id} is unavailable or has been removed")
             else:
-                raise ValueError(f"Failed to extract download info for video {video_id}: {error_msg}")
-            
+                logger.error(f"Failed to extract download info for video {video_id}: {error_msg}")
             return None
         
         except Exception as e:
             logger.error(f"Error getting download info for {video_id}: {str(e)}")
-            raise
+            return None
 
 
 ytdlp_service = YtDlpService()
