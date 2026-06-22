@@ -103,8 +103,8 @@ class YtDlpService:
             raise
     
     async def _search_on_platform(self, query: str, max_results: int, platform: str) -> List[Dict[str, Any]]:
-        """Search on a specific platform."""
-        opts = self._get_ydl_opts(extract_flat=True)
+        """Search on a specific platform with full extraction to verify availability."""
+        opts = self._get_ydl_opts(extract_flat=False)
         opts['playlistend'] = max_results
         
         # Build search query based on platform
@@ -124,18 +124,20 @@ class YtDlpService:
             
             videos = []
             for entry in results['entries']:
-                if entry:
-                    videos.append({
-                        'id': entry.get('id'),
-                        'title': entry.get('title'),
-                        'url': entry.get('url'),
-                        'thumbnail': entry.get('thumbnail'),
-                        'duration': entry.get('duration'),
-                        'view_count': entry.get('view_count'),
-                        'uploader': entry.get('uploader'),
-                        'uploader_id': entry.get('uploader_id'),
-                        'platform': platform,
-                    })
+                if entry and entry.get('id'):
+                    # Only include videos that have formats (downloadable)
+                    if entry.get('formats') and len(entry.get('formats', [])) > 0:
+                        videos.append({
+                            'id': entry.get('id'),
+                            'title': entry.get('title'),
+                            'url': entry.get('webpage_url') or entry.get('url'),
+                            'thumbnail': entry.get('thumbnail'),
+                            'duration': entry.get('duration'),
+                            'view_count': entry.get('view_count'),
+                            'uploader': entry.get('uploader'),
+                            'uploader_id': entry.get('uploader_id'),
+                            'platform': platform,
+                        })
             
             return videos
     
