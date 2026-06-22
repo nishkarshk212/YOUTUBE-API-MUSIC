@@ -457,10 +457,13 @@ class YtDlpService:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
+            logger.info(f"Attempting to extract download info for {video_id} with client {client}")
+            
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
                 if not info:
+                    logger.warning(f"No info returned for {video_id} with client {client}")
                     return None
                 
                 # Get all available formats
@@ -478,6 +481,8 @@ class YtDlpService:
                             'abr': fmt.get('abr'),
                             'vbr': fmt.get('vbr'),
                         })
+                
+                logger.info(f"Successfully extracted download info for {video_id} with client {client}")
                 
                 return {
                     'id': info.get('id'),
@@ -503,17 +508,18 @@ class YtDlpService:
                         return result
                 except Exception as e:
                     last_error = e
-                    logger.warning(f"Client {client} failed for download info: {e}")
+                    logger.warning(f"Client {client} failed for download info: {str(e)}")
                     continue
             
             # If all clients failed, raise the last error
             if last_error:
+                logger.error(f"All clients failed for video {video_id}. Last error: {str(last_error)}")
                 raise last_error
             
             return None
         
         except Exception as e:
-            logger.error(f"Error getting download info: {e}")
+            logger.error(f"Error getting download info for {video_id}: {str(e)}")
             raise
 
 
