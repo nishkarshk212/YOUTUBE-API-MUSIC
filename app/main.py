@@ -420,6 +420,7 @@ async def get_download_info(
     request: Request,
     id: str = Query(..., description="Video ID or URL"),
     format: str = Query(None, description="Custom format string (optional)"),
+    type: str = Query(None, description="Type: audio or video (optional)"),
     platform: str = Query("youtube", description="Platform (youtube, soundcloud)"),
     api_key: str = Depends(verify_api_key)
 ):
@@ -430,6 +431,13 @@ async def get_download_info(
     Useful for Telegram bots that need to download videos/audio.
     Supports: youtube, soundcloud
     """
+    # Map type to format if format is not provided
+    if not format and type:
+        if type == "audio":
+            format = "bestaudio/best"
+        elif type == "video":
+            format = "bestvideo+bestaudio/best"
+    
     cache_key = f"download:{id}:{format or 'default'}:{platform}"
     
     # Check cache
