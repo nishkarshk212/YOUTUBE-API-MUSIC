@@ -103,18 +103,18 @@ class YtDlpService:
             raise
     
     async def _search_on_platform(self, query: str, max_results: int, platform: str) -> List[Dict[str, Any]]:
-        """Search on a specific platform with full extraction to verify availability."""
-        opts = self._get_ydl_opts(extract_flat=False)
-        opts['playlistend'] = max_results * 2  # Get more results to filter out unavailable ones
+        """Search on a specific platform."""
+        opts = self._get_ydl_opts(extract_flat=True)
+        opts['playlistend'] = max_results
         
         # Build search query based on platform
         if platform == 'youtube':
-            search_query = f"ytsearch{max_results * 2}:{query}"
+            search_query = f"ytsearch{max_results}:{query}"
         elif platform == 'soundcloud':
-            search_query = f"scsearch{max_results * 2}:{query}"
+            search_query = f"scsearch{max_results}:{query}"
         else:
             # Default to YouTube
-            search_query = f"ytsearch{max_results * 2}:{query}"
+            search_query = f"ytsearch{max_results}:{query}"
         
         with yt_dlp.YoutubeDL(opts) as ydl:
             results = ydl.extract_info(search_query, download=False)
@@ -124,32 +124,18 @@ class YtDlpService:
             
             videos = []
             for entry in results['entries']:
-                if entry and entry.get('id'):
-                    # Only include videos that have formats AND are not unavailable
-                    if entry.get('formats') and len(entry.get('formats', [])) > 0:
-                        # Check if video is actually accessible by looking for valid URLs in formats
-                        has_valid_url = False
-                        for fmt in entry.get('formats', []):
-                            if fmt.get('url') and 'http' in fmt.get('url', ''):
-                                has_valid_url = True
-                                break
-                        
-                        if has_valid_url:
-                            videos.append({
-                                'id': entry.get('id'),
-                                'title': entry.get('title'),
-                                'url': entry.get('webpage_url') or entry.get('url'),
-                                'thumbnail': entry.get('thumbnail'),
-                                'duration': entry.get('duration'),
-                                'view_count': entry.get('view_count'),
-                                'uploader': entry.get('uploader'),
-                                'uploader_id': entry.get('uploader_id'),
-                                'platform': platform,
-                            })
-                
-                # Stop once we have enough results
-                if len(videos) >= max_results:
-                    break
+                if entry:
+                    videos.append({
+                        'id': entry.get('id'),
+                        'title': entry.get('title'),
+                        'url': entry.get('url'),
+                        'thumbnail': entry.get('thumbnail'),
+                        'duration': entry.get('duration'),
+                        'view_count': entry.get('view_count'),
+                        'uploader': entry.get('uploader'),
+                        'uploader_id': entry.get('uploader_id'),
+                        'platform': platform,
+                    })
             
             return videos
     
