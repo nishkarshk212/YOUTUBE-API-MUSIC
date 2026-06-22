@@ -511,6 +511,17 @@ class YtDlpService:
                     logger.warning(f"Client {client} failed for download info: {str(e)}")
                     continue
             
+            # If all clients failed, try fallback to search by video ID
+            logger.warning(f"All clients failed for video {video_id}, trying search fallback")
+            try:
+                search_results = await self.search_videos(video_id, max_results=1, platform=platform)
+                if search_results and len(search_results) > 0:
+                    logger.info(f"Found video via search fallback: {search_results[0]['id']}")
+                    # Try extraction with the found video ID
+                    return await self.get_download_info(search_results[0]['id'], format, platform)
+            except Exception as search_error:
+                logger.warning(f"Search fallback also failed: {str(search_error)}")
+            
             # If all clients failed, raise the last error
             if last_error:
                 logger.error(f"All clients failed for video {video_id}. Last error: {str(last_error)}")
