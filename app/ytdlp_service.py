@@ -460,7 +460,12 @@ class YtDlpService:
             logger.info(f"Attempting to extract download info for {video_id} with client {client}")
             
             with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+                try:
+                    info = ydl.extract_info(url, download=False)
+                except Exception as extract_error:
+                    logger.error(f"Extraction failed for {video_id} with client {client}: {str(extract_error)}")
+                    logger.error(f"Full error details: {type(extract_error).__name__}")
+                    raise
                 
                 if not info:
                     logger.warning(f"No info returned for {video_id} with client {client}")
@@ -507,8 +512,10 @@ class YtDlpService:
                     if result:
                         return result
                 except Exception as e:
+                    import traceback
                     last_error = e
-                    logger.warning(f"Client {client} failed for download info: {str(e)}")
+                    logger.error(f"Client {client} failed for download info: {str(e)}")
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
                     continue
             
             # If all clients failed, try fallback to search by video ID
