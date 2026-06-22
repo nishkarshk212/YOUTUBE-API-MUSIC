@@ -456,6 +456,16 @@ async def get_download_info(
                 detail="Download information not found"
             )
         
+        # Filter formats based on type parameter
+        if type:
+            filtered_formats = []
+            for fmt in download.get('formats', []):
+                if type == "audio" and fmt.get('vcodec') == 'none':
+                    filtered_formats.append(fmt)
+                elif type == "video" and fmt.get('vcodec') != 'none':
+                    filtered_formats.append(fmt)
+            download['formats'] = filtered_formats
+        
         response = DownloadResponse(
             success=True,
             download=download
