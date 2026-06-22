@@ -514,18 +514,28 @@ class YtDlpService:
             # If all clients failed, try fallback to search by video ID
             logger.warning(f"All clients failed for video {video_id}, trying search fallback")
             try:
+                # Search by video ID to try to find the video
                 search_results = await self.search_videos(video_id, max_results=1, platform=platform)
                 if search_results and len(search_results) > 0:
-                    logger.info(f"Found video via search fallback: {search_results[0]['id']}")
-                    # Try extraction with the found video ID
-                    return await self.get_download_info(search_results[0]['id'], format, platform)
+                    found_id = search_results[0]['id']
+                    logger.info(f"Found video via search fallback: {found_id}")
+                    # If the found ID is different from the original, try extraction with it
+                    if found_id != video_id:
+                        logger.info(f"Trying extraction with found video ID: {found_id}")
+                        return await self.get_download_info(found_id, format, platform)
+                    else:
+                        logger.warning(f"Search returned same video ID {video_id}, skipping retry")
+                else:
+                    logger.warning(f"Search fallback returned no results for {video_id}")
             except Exception as search_error:
                 logger.warning(f"Search fallback also failed: {str(search_error)}")
             
-            # If all clients failed, raise the last error
-            if last_error:
-                logger.error(f"All clients failed for video {video_id}. Last error: {str(last_error)}")
-                raise last_error
+            # If all clients failed, raise a descriptive error
+            error_msg = str(last_error) if last_error else "Video unavailable or not found"
+            if "unavailable" in error_msg.lower() or "not found" in error_msg.lower():
+                raise ValueError(f"Video {video_id} is unavailable or has been removed")
+            else:
+                raise ValueError(f"Failed to extract download info for video {video_id}: {error_msg}")
             
             return None
         
