@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: youtube-api-music
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: API_KEY
+        generateValue: true
+      - key: YOUTUBE_DATA_V3_API_KEY
+        sync: false
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 10000
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: CACHE_ENABLED
+        value: "true"
+      - key: CACHE_TYPE
+        value: memory
+      - key: CACHE_TTL_SECONDS
+        value: "3600"
+      - key: YTDLP_AUTO_UPDATE
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      - key: ALLOWED_ORIGINS
+        value: "*"
