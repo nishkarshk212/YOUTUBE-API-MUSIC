@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_title: str = "YouTube API Service"
     api_version: str = "1.0.0"
+    
+    # YouTube Data V3 API
+    youtube_data_v3_api_key: str = ""
 
     # Rate Limiting
     rate_limit_enabled: bool = True
