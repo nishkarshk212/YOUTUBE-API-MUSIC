@@ -1,5 +1,7 @@
 # YOUTUBE-API-MUSIC
 
+Deployed on Railway with auto-updates disabled!
+
 A secure, self-hosted YouTube API service specifically designed for personal use with Telegram music bots. Built with Python (FastAPI) and yt-dlp, providing a clean REST API with comprehensive features.
 
 ## Features
