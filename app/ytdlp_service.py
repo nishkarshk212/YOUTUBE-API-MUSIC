@@ -133,7 +133,10 @@ class YtDlpService:
     
     async def get_video_info(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
         """Get detailed information about a video with client fallback and retry."""
+        logger.info(f"[get_video_info] Starting for video_id: {video_id}, platform: {platform}")
+        
         async def _extract_info(client: str):
+            logger.info(f"[get_video_info] Trying client: {client}")
             opts = self._get_ydl_opts(extract_flat=False, client=client)
             
             # Build URL based on platform
@@ -145,31 +148,39 @@ class YtDlpService:
                 # Try as direct URL
                 url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
             
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                
-                if not info:
-                    return None
-                
-                return {
-                    'id': info.get('id'),
-                    'title': info.get('title'),
-                    'description': info.get('description'),
-                    'duration': info.get('duration'),
-                    'view_count': info.get('view_count'),
-                    'like_count': info.get('like_count'),
-                    'uploader': info.get('uploader'),
-                    'uploader_id': info.get('uploader_id'),
-                    'upload_date': info.get('upload_date'),
-                    'thumbnail': info.get('thumbnail'),
-                    'webpage_url': info.get('webpage_url'),
-                    'is_live': info.get('is_live', False),
-                    'age_limit': info.get('age_limit'),
-                    'categories': info.get('categories', []),
-                    'tags': info.get('tags', []),
-                    'platform': platform,
-                    'extractor': info.get('extractor'),
-                }
+            logger.info(f"[get_video_info] Using URL: {url}")
+            
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    
+                    if not info:
+                        logger.warning(f"[get_video_info] No info returned for client {client}")
+                        return None
+                    
+                    logger.info(f"[get_video_info] Success with client {client}")
+                    return {
+                        'id': info.get('id'),
+                        'title': info.get('title'),
+                        'description': info.get('description'),
+                        'duration': info.get('duration'),
+                        'view_count': info.get('view_count'),
+                        'like_count': info.get('like_count'),
+                        'uploader': info.get('uploader'),
+                        'uploader_id': info.get('uploader_id'),
+                        'upload_date': info.get('upload_date'),
+                        'thumbnail': info.get('thumbnail'),
+                        'webpage_url': info.get('webpage_url'),
+                        'is_live': info.get('is_live', False),
+                        'age_limit': info.get('age_limit'),
+                        'categories': info.get('categories', []),
+                        'tags': info.get('tags', []),
+                        'platform': platform,
+                        'extractor': info.get('extractor'),
+                    }
+            except Exception as e:
+                logger.error(f"[get_video_info] Error with client {client}: {type(e).__name__} - {str(e)}", exc_info=True)
+                raise
         
         try:
             # Try with client fallback
@@ -183,17 +194,18 @@ class YtDlpService:
                         return result
                 except Exception as e:
                     last_error = e
-                    logger.warning(f"Client {client} failed for video info: {e}")
+                    logger.warning(f"[get_video_info] Client {client} failed for video info: {e}")
                     continue
             
             # If all clients failed, raise the last error
+            logger.error(f"[get_video_info] All clients failed! Last error: {last_error}")
             if last_error:
                 raise last_error
             
             return None
         
         except Exception as e:
-            logger.error(f"Error getting video info: {e}")
+            logger.error(f"[get_video_info] Error getting video info: {e}", exc_info=True)
             raise
     
     async def get_audio_stream(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
