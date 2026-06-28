@@ -26,25 +26,19 @@ class YtDlpService:
         logger.info("yt-dlp auto-update disabled (managed via requirements.txt)")
         return False
     
-    def _get_ydl_opts(self, format: str = None, extract_flat: bool = False, client: str = 'android') -> Dict[str, Any]:
-        """Get yt-dlp options."""
+    def _get_ydl_opts(self, format: str = None, extract_flat: bool = False) -> Dict[str, Any]:
+        """Get yt-dlp options (simplified for reliability)."""
         opts = {
             'format': format or settings.default_audio_format,
             'quiet': True,
             'no_warnings': True,
             'extract_flat': extract_flat,
             'age_limit': None,  # Allow age-restricted content
-            'ignoreerrors': True,
+            'ignoreerrors': False,  # Don't ignore errors - let us see what went wrong!
             'nocheckcertificate': True,
             'geo_bypass': settings.region_fallback,
             'geo_bypass_country': None,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': client,
-                }
-            },
             'cookiefile': settings.cookie_file if settings.use_cookies else None,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         }
         
         # Enable IPv4 if configured
@@ -132,100 +126,78 @@ class YtDlpService:
             return videos
     
     async def get_video_info(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
-        """Get detailed information about a video with client fallback and retry."""
+        """Get detailed information about a video (simplified)."""
         logger.info(f"[get_video_info] Starting for video_id: {video_id}, platform: {platform}")
         
-        async def _extract_info(client: str):
-            logger.info(f"[get_video_info] Trying client: {client}")
-            opts = self._get_ydl_opts(extract_flat=False, client=client)
-            
-            # Build URL based on platform
-            if platform == 'youtube':
-                url = f"https://www.youtube.com/watch?v={video_id}"
-            elif platform == 'soundcloud':
-                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            else:
-                # Try as direct URL
-                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
-            
-            logger.info(f"[get_video_info] Using URL: {url}")
-            
-            try:
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    
-                    if not info:
-                        logger.warning(f"[get_video_info] No info returned for client {client}")
-                        return None
-                    
-                    logger.info(f"[get_video_info] Success with client {client}")
-                    return {
-                        'id': info.get('id'),
-                        'title': info.get('title'),
-                        'description': info.get('description'),
-                        'duration': info.get('duration'),
-                        'view_count': info.get('view_count'),
-                        'like_count': info.get('like_count'),
-                        'uploader': info.get('uploader'),
-                        'uploader_id': info.get('uploader_id'),
-                        'upload_date': info.get('upload_date'),
-                        'thumbnail': info.get('thumbnail'),
-                        'webpage_url': info.get('webpage_url'),
-                        'is_live': info.get('is_live', False),
-                        'age_limit': info.get('age_limit'),
-                        'categories': info.get('categories', []),
-                        'tags': info.get('tags', []),
-                        'platform': platform,
-                        'extractor': info.get('extractor'),
-                    }
-            except Exception as e:
-                logger.error(f"[get_video_info] Error with client {client}: {type(e).__name__} - {str(e)}", exc_info=True)
-                raise
+        opts = self._get_ydl_opts(extract_flat=False)
+        
+        # Build URL based on platform
+        if platform == 'youtube':
+            url = f"https://www.youtube.com/watch?v={video_id}"
+        elif platform == 'soundcloud':
+            url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+        else:
+            # Try as direct URL
+            url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
+        
+        logger.info(f"[get_video_info] Using URL: {url}")
         
         try:
-            # Try with client fallback
-            clients = settings.client_order.split(',')
-            last_error = None
-            
-            for client in clients:
-                try:
-                    result = await self._retry_with_backoff(_extract_info, client.strip())
-                    if result:
-                        return result
-                except Exception as e:
-                    last_error = e
-                    logger.warning(f"[get_video_info] Client {client} failed for video info: {e}")
-                    continue
-            
-            # If all clients failed, raise the last error
-            logger.error(f"[get_video_info] All clients failed! Last error: {last_error}")
-            if last_error:
-                raise last_error
-            
-            return None
-        
-        except Exception as e:
-            logger.error(f"[get_video_info] Error getting video info: {e}", exc_info=True)
-            raise
-    
-    async def get_audio_stream(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
-        """Get audio stream information with multiple URLs and retry."""
-        async def _extract_audio(client: str):
-            opts = self._get_ydl_opts(extract_flat=False, client=client)
-            
-            # Build URL based on platform
-            if platform == 'youtube':
-                url = f"https://www.youtube.com/watch?v={video_id}"
-            elif platform == 'soundcloud':
-                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            else:
-                # Try as direct URL
-                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
-            
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
                 if not info:
+                    logger.warning("[get_video_info] No info returned")
+                    return None
+                
+                logger.info("[get_video_info] Success!")
+                return {
+                    'id': info.get('id'),
+                    'title': info.get('title'),
+                    'description': info.get('description'),
+                    'duration': info.get('duration'),
+                    'view_count': info.get('view_count'),
+                    'like_count': info.get('like_count'),
+                    'uploader': info.get('uploader'),
+                    'uploader_id': info.get('uploader_id'),
+                    'upload_date': info.get('upload_date'),
+                    'thumbnail': info.get('thumbnail'),
+                    'webpage_url': info.get('webpage_url'),
+                    'is_live': info.get('is_live', False),
+                    'age_limit': info.get('age_limit'),
+                    'categories': info.get('categories', []),
+                    'tags': info.get('tags', []),
+                    'platform': platform,
+                    'extractor': info.get('extractor'),
+                }
+        
+        except Exception as e:
+            logger.error(f"[get_video_info] Error: {type(e).__name__} - {str(e)}", exc_info=True)
+            raise
+    
+    async def get_audio_stream(self, video_id: str, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
+        """Get audio stream information (simplified)."""
+        logger.info(f"[get_audio_stream] Starting for video_id: {video_id}, platform: {platform}")
+        
+        opts = self._get_ydl_opts(extract_flat=False)
+        
+        # Build URL based on platform
+        if platform == 'youtube':
+            url = f"https://www.youtube.com/watch?v={video_id}"
+        elif platform == 'soundcloud':
+            url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+        else:
+            # Try as direct URL
+            url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
+        
+        logger.info(f"[get_audio_stream] Using URL: {url}")
+        
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                if not info:
+                    logger.warning("[get_audio_stream] No info returned")
                     return None
                 
                 # Get all audio formats
@@ -246,8 +218,10 @@ class YtDlpService:
                 audio_formats.sort(key=lambda x: x.get('audio_bitrate') or 0, reverse=True)
                 
                 if not audio_formats:
+                    logger.warning("[get_audio_stream] No audio formats found")
                     return None
                 
+                logger.info("[get_audio_stream] Success!")
                 # Return multiple audio URLs
                 return {
                     'id': info.get('id'),
@@ -258,54 +232,39 @@ class YtDlpService:
                     'best_audio': audio_formats[0] if audio_formats else None,
                 }
         
-        try:
-            # Try with client fallback
-            clients = settings.client_order.split(',')
-            last_error = None
-            
-            for client in clients:
-                try:
-                    result = await self._retry_with_backoff(_extract_audio, client.strip())
-                    if result:
-                        return result
-                except Exception as e:
-                    last_error = e
-                    logger.warning(f"Client {client} failed for audio stream: {e}")
-                    continue
-            
-            # If all clients failed, raise the last error
-            if last_error:
-                raise last_error
-            
-            return None
-        
         except Exception as e:
-            logger.error(f"Error getting audio stream: {e}")
+            logger.error(f"[get_audio_stream] Error: {type(e).__name__} - {str(e)}", exc_info=True)
             raise
     
     async def get_stream_url(self, video_id: str, format: str = None, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
-        """Get playable stream URL with client fallback and retry."""
-        async def _extract_stream(client: str):
-            opts = self._get_ydl_opts(format=format, extract_flat=False, client=client)
-            
-            # Build URL based on platform
-            if platform == 'youtube':
-                url = f"https://www.youtube.com/watch?v={video_id}"
-            elif platform == 'soundcloud':
-                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            else:
-                # Try as direct URL
-                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
-            
+        """Get playable stream URL (simplified)."""
+        logger.info(f"[get_stream_url] Starting for video_id: {video_id}, platform: {platform}")
+        
+        opts = self._get_ydl_opts(format=format, extract_flat=False)
+        
+        # Build URL based on platform
+        if platform == 'youtube':
+            url = f"https://www.youtube.com/watch?v={video_id}"
+        elif platform == 'soundcloud':
+            url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+        else:
+            # Try as direct URL
+            url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
+        
+        logger.info(f"[get_stream_url] Using URL: {url}")
+        
+        try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
                 if not info:
+                    logger.warning("[get_stream_url] No info returned")
                     return None
                 
                 # Get the best format URL
                 formats = info.get('formats', [])
                 if not formats:
+                    logger.warning("[get_stream_url] No formats found")
                     return None
                 
                 # Prefer formats with both video and audio
@@ -323,8 +282,10 @@ class YtDlpService:
                             break
                 
                 if not best_format:
+                    logger.warning("[get_stream_url] No suitable format found")
                     return None
                 
+                logger.info("[get_stream_url] Success!")
                 return {
                     'id': info.get('id'),
                     'title': info.get('title'),
@@ -336,29 +297,8 @@ class YtDlpService:
                     'platform': platform,
                 }
         
-        try:
-            # Try with client fallback
-            clients = settings.client_order.split(',')
-            last_error = None
-            
-            for client in clients:
-                try:
-                    result = await self._retry_with_backoff(_extract_stream, client.strip())
-                    if result:
-                        return result
-                except Exception as e:
-                    last_error = e
-                    logger.warning(f"Client {client} failed for stream URL: {e}")
-                    continue
-            
-            # If all clients failed, raise the last error
-            if last_error:
-                raise last_error
-            
-            return None
-        
         except Exception as e:
-            logger.error(f"Error getting stream URL: {e}")
+            logger.error(f"[get_stream_url] Error: {type(e).__name__} - {str(e)}", exc_info=True)
             raise
     
     async def get_playlist_info(self, playlist_id: str) -> Optional[Dict[str, Any]]:
@@ -448,31 +388,28 @@ class YtDlpService:
             raise
     
     async def get_download_info(self, video_id: str, format: str = None, platform: str = 'youtube') -> Optional[Dict[str, Any]]:
-        """Get download information with client fallback and retry."""
-        async def _extract_download(client: str):
-            opts = self._get_ydl_opts(format=format, extract_flat=False, client=client)
-            
-            # Build URL based on platform
-            if platform == 'youtube':
-                url = f"https://www.youtube.com/watch?v={video_id}"
-            elif platform == 'soundcloud':
-                url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
-            else:
-                # Try as direct URL
-                url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
-            
-            logger.info(f"Attempting to extract download info for {video_id} with client {client}")
-            
+        """Get download information (simplified)."""
+        logger.info(f"[get_download_info] Starting for video_id: {video_id}, platform: {platform}")
+        
+        opts = self._get_ydl_opts(format=format, extract_flat=False)
+        
+        # Build URL based on platform
+        if platform == 'youtube':
+            url = f"https://www.youtube.com/watch?v={video_id}"
+        elif platform == 'soundcloud':
+            url = f"https://soundcloud.com/{video_id}" if '/' not in video_id else video_id
+        else:
+            # Try as direct URL
+            url = video_id if video_id.startswith('http') else f"https://www.youtube.com/watch?v={video_id}"
+        
+        logger.info(f"[get_download_info] Using URL: {url}")
+        
+        try:
             with yt_dlp.YoutubeDL(opts) as ydl:
-                try:
-                    info = ydl.extract_info(url, download=False)
-                except Exception as extract_error:
-                    logger.error(f"Extraction failed for {video_id} with client {client}: {str(extract_error)}")
-                    logger.error(f"Full error details: {type(extract_error).__name__}")
-                    raise
+                info = ydl.extract_info(url, download=False)
                 
                 if not info:
-                    logger.warning(f"No info returned for {video_id} with client {client}")
+                    logger.warning("[get_download_info] No info returned")
                     return None
                 
                 # Get all available formats
@@ -491,8 +428,7 @@ class YtDlpService:
                             'vbr': fmt.get('vbr'),
                         })
                 
-                logger.info(f"Successfully extracted download info for {video_id} with client {client}")
-                
+                logger.info("[get_download_info] Success!")
                 return {
                     'id': info.get('id'),
                     'title': info.get('title'),
@@ -505,53 +441,9 @@ class YtDlpService:
                     'platform': platform,
                 }
         
-        try:
-            # Try with client fallback
-            clients = settings.client_order.split(',')
-            last_error = None
-            
-            for client in clients:
-                try:
-                    result = await self._retry_with_backoff(_extract_download, client.strip())
-                    if result:
-                        return result
-                except Exception as e:
-                    import traceback
-                    last_error = e
-                    logger.error(f"Client {client} failed for download info: {str(e)}")
-                    logger.error(f"Full traceback: {traceback.format_exc()}")
-                    continue
-            
-            # If all clients failed, try fallback to search by video ID
-            logger.warning(f"All clients failed for video {video_id}, trying search fallback")
-            try:
-                # Search by video ID to try to find the video
-                search_results = await self.search_videos(video_id, max_results=1, platform=platform)
-                if search_results and len(search_results) > 0:
-                    found_id = search_results[0]['id']
-                    logger.info(f"Found video via search fallback: {found_id}")
-                    # If the found ID is different from the original, try extraction with it
-                    if found_id != video_id:
-                        logger.info(f"Trying extraction with found video ID: {found_id}")
-                        return await self.get_download_info(found_id, format, platform)
-                    else:
-                        logger.warning(f"Search returned same video ID {video_id}, skipping retry")
-                else:
-                    logger.warning(f"Search fallback returned no results for {video_id}")
-            except Exception as search_error:
-                logger.warning(f"Search fallback also failed: {str(search_error)}")
-            
-            # If all clients failed, return None (video unavailable)
-            error_msg = str(last_error) if last_error else "Video unavailable or not found"
-            if "unavailable" in error_msg.lower() or "not found" in error_msg.lower():
-                logger.warning(f"Video {video_id} is unavailable or has been removed")
-            else:
-                logger.error(f"Failed to extract download info for video {video_id}: {error_msg}")
-            return None
-        
         except Exception as e:
-            logger.error(f"Error getting download info for {video_id}: {str(e)}")
-            return None
+            logger.error(f"[get_download_info] Error: {type(e).__name__} - {str(e)}", exc_info=True)
+            raise
 
 
 ytdlp_service = YtDlpService()
