@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Query, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -62,23 +63,170 @@ async def startup_event():
     logger.info("Application started successfully")
 
 
-@app.get("/", response_model=HealthResponse, tags=["Health"])
+@app.get("/", response_class=HTMLResponse, tags=["Health"])
 async def root():
     """
-    Root endpoint - shows API health status.
+    Root endpoint - shows API health status with a nice UI.
     """
     try:
         ytdlp_version = yt_dlp.version.__version__
     except:
         ytdlp_version = "unknown"
     
-    return HealthResponse(
-        status="healthy",
-        version=settings.api_version,
-        ytdlp_version=ytdlp_version,
-        cache_enabled=settings.cache_enabled,
-        rate_limit_enabled=settings.rate_limit_enabled
-    )
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube API Music - LIVE</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }}
+        body {{
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }}
+        .card {{
+            background: white;
+            padding: 4rem 3rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }}
+        .status {{
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1rem 0;
+            color: #10b981;
+        }}
+        .status .emoji {{
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }}
+        h1 {{
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }}
+        .version {{
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }}
+        .info-grid {{
+            display: grid;
+            gap: 1rem;
+            margin: 2rem 0;
+            text-align: left;
+        }}
+        .info-item {{
+            background: #f9fafb;
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .info-item .label {{
+            color: #6b7280;
+            font-weight: 500;
+        }}
+        .info-item .value {{
+            font-weight: 600;
+            color: #1f2937;
+        }}
+        .pill {{
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }}
+        .pill.green {{
+            background: #d1fae5;
+            color: #065f46;
+        }}
+        .pill.red {{
+            background: #fee2e2;
+            color: #991b1b;
+        }}
+        .links {{
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }}
+        .links a {{
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }}
+        .links .docs {{
+            background: #667eea;
+            color: white;
+        }}
+        .links .docs:hover {{
+            background: #5a67d8;
+        }}
+        .links .redoc {{
+            background: #f3f4f6;
+            color: #1f2937;
+        }}
+        .links .redoc:hover {{
+            background: #e5e7eb;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="status">
+            <span class="emoji">✅</span>
+            LIVE & HEALTHY
+        </div>
+        <h1>YouTube API Music</h1>
+        <p class="version">v{settings.api_version}</p>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="label">yt-dlp</span>
+                <span class="value">{ytdlp_version}</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Cache</span>
+                <span class="pill {'green' if settings.cache_enabled else 'red'}">
+                    {'Enabled' if settings.cache_enabled else 'Disabled'}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="label">Rate Limiting</span>
+                <span class="pill {'green' if settings.rate_limit_enabled else 'red'}">
+                    {'Enabled' if settings.rate_limit_enabled else 'Disabled'}
+                </span>
+            </div>
+        </div>
+        
+        <div class="links">
+            <a href="/docs" class="docs">API Docs (Swagger)</a>
+            <a href="/redoc" class="redoc">API Docs (Redoc)</a>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return HTMLResponse(content=html_content)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
