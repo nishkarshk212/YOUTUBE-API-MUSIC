@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 60
 
     # Caching Configuration
-    cache_enabled: bool = True
+    cache_enabled: bool = False
     cache_type: str = "memory"  # memory or redis
     cache_ttl_seconds: int = 3600
     redis_url: Optional[str] = None
