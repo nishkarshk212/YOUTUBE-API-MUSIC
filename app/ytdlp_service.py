@@ -20,7 +20,9 @@ class YtDlpService:
         self._update_lock = asyncio.Lock()
     
     async def auto_update(self) -> bool:
-        """Auto-update yt-dlp (disabled for production, managed via requirements.txt)."""
+        """Auto-update yt-dlp (disabled for production, managed via requirements.txt).
+        Last tested with yt-dlp 2026.06.09
+        """
         logger.info("yt-dlp auto-update disabled (managed via requirements.txt)")
         return False
     
