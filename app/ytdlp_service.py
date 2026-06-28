@@ -20,19 +20,9 @@ class YtDlpService:
         self._update_lock = asyncio.Lock()
     
     async def auto_update(self) -> bool:
-        """Auto-update yt-dlp if enabled."""
-        if not settings.ytdlp_auto_update:
-            return False
-        
-        async with self._update_lock:
-            try:
-                logger.info("Checking for yt-dlp updates...")
-                yt_dlp.update_if_available()
-                logger.info("yt-dlp update check completed")
-                return True
-            except Exception as e:
-                logger.error(f"Failed to update yt-dlp: {e}")
-                return False
+        """Auto-update yt-dlp (disabled for production, managed via requirements.txt)."""
+        logger.info("yt-dlp auto-update disabled (managed via requirements.txt)")
+        return False
     
     def _get_ydl_opts(self, format: str = None, extract_flat: bool = False, client: str = 'android') -> Dict[str, Any]:
         """Get yt-dlp options."""
