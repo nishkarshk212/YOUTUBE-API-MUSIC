@@ -4,7 +4,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # API Configuration
-    api_key: str = "your_secure_api_key_here"
+    api_key: str = "NISHKARSH_eTKQjVzWOQEB6aploRZ@r)X1A4(r)MC1"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_title: str = "YouTube API Service"
