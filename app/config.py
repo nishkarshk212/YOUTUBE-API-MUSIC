@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     region_fallback: bool = True
     
     # Enhanced extraction settings
-    use_cookies: bool = False
-    cookie_file: Optional[str] = None
+    use_cookies: bool = True
+    cookie_file: Optional[str] = "app/cookies.txt"
     source_address: str = "0.0.0.0"
     enable_ipv4: bool = True
     max_retries: int = 3
