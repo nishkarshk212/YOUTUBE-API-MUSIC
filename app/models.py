@@ -47,6 +47,9 @@ class HealthResponse(BaseModel):
     ytdlp_version: str
     cache_enabled: bool
     rate_limit_enabled: bool
+    use_cookies: Optional[bool] = None
+    cookie_file: Optional[str] = None
+    cookie_file_exists: Optional[bool] = None
 
 
 class DownloadResponse(BaseModel):

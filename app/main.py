@@ -234,17 +234,25 @@ async def health_check():
     """
     Health check endpoint to verify API status.
     """
+    import os
     try:
         ytdlp_version = yt_dlp.version.__version__
     except:
         ytdlp_version = "unknown"
+    
+    cookie_exists = False
+    if settings.cookie_file:
+        cookie_exists = os.path.exists(settings.cookie_file)
     
     return HealthResponse(
         status="healthy",
         version=settings.api_version,
         ytdlp_version=ytdlp_version,
         cache_enabled=settings.cache_enabled,
-        rate_limit_enabled=settings.rate_limit_enabled
+        rate_limit_enabled=settings.rate_limit_enabled,
+        use_cookies=settings.use_cookies,
+        cookie_file=settings.cookie_file,
+        cookie_file_exists=cookie_exists
     )
 
 
