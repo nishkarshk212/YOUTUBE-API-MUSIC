@@ -428,6 +428,27 @@ class YtDlpService:
                             'vbr': fmt.get('vbr'),
                         })
                 
+                # Determine best audio/video URL
+                best_audio_url = None
+                best_video_url = None
+                
+                # Check requested_formats first (for split streams)
+                req_formats = info.get('requested_formats')
+                if req_formats:
+                    for fmt in req_formats:
+                        if fmt.get('vcodec') != 'none' and not best_video_url:
+                            best_video_url = fmt.get('url')
+                        if fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none' and not best_audio_url:
+                            best_audio_url = fmt.get('url')
+                
+                # Fallback to info.get('url')
+                if not best_audio_url:
+                    if info.get('url') and info.get('vcodec') == 'none':
+                        best_audio_url = info.get('url')
+                if not best_video_url:
+                    if info.get('url') and info.get('vcodec') != 'none':
+                        best_video_url = info.get('url')
+
                 logger.info("[get_download_info] Success!")
                 return {
                     'id': info.get('id'),
@@ -436,8 +457,8 @@ class YtDlpService:
                     'thumbnail': info.get('thumbnail'),
                     'webpage_url': info.get('webpage_url'),
                     'formats': formats,
-                    'best_audio_url': info.get('url') if info.get('vcodec') == 'none' else None,
-                    'best_video_url': info.get('url') if info.get('acodec') == 'none' else None,
+                    'best_audio_url': best_audio_url,
+                    'best_video_url': best_video_url,
                     'platform': platform,
                 }
         

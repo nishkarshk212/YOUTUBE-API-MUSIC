@@ -616,7 +616,7 @@ async def get_download_info(
         if type:
             filtered_formats = []
             for fmt in download.get('formats', []):
-                if type == "audio" and fmt.get('vcodec') == 'none':
+                if type == "audio" and fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none':
                     filtered_formats.append(fmt)
                 elif type == "video" and fmt.get('vcodec') != 'none':
                     filtered_formats.append(fmt)
