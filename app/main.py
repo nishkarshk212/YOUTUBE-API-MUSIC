@@ -64,6 +64,7 @@ async def startup_event():
 
 
 @app.get("/", response_class=HTMLResponse, tags=["Health"])
+@limiter.exempt if limiter else lambda f: f
 async def root():
     """
     Root endpoint - shows API health status with a nice UI.
@@ -230,6 +231,7 @@ async def root():
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
+@limiter.exempt if limiter else lambda f: f
 async def health_check():
     """
     Health check endpoint to verify API status.
