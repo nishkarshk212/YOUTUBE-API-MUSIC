@@ -44,3 +44,5 @@ logs/
 
 # Cache
 .cache/
+downloaded_formats/
+downloaded_formats_vercel/
